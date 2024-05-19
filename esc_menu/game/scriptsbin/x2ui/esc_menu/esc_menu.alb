@@ -1,0 +1,864 @@
+local LoadMenuPlugins = function()
+  --use cmd dir command to auto detect all plugins or read plugin list from plugins.txt
+  local autodetect = false
+  --addon path relative to game working dir
+  local pluginPath = "mods\\esc_menu\\plugins"
+  local plugins = {}
+  local pluginCount = 0
+  local failedCount = 0
+  local files = nil
+  if autodetect then
+    files = io.popen(table.concat({"dir ", pluginPath, " /b /a-d"}))
+    files:flush()
+  else
+    files = io.open(pluginPath .. "\\plugins.txt")
+  end
+  for file in files:lines() do
+    if file:match("%.lua$") then
+      local filename = file:sub(1, -5)
+      local success, response = pcall(function() return require(string.format(pluginPath .. "\\%s", filename)) end)
+      if success then
+        if type(response) == 'table' then
+          if response.info and response.menu and response.category and response.info.name and response.menu.badgeColorKey and response.menu.iconKey and response.menu.iconKey then
+            plugins[response.menu.uiContentType] = response
+            pluginCount = pluginCount + 1
+            X2:ChatLog(string.format("[MenuPluginLoader] Successfully loaded %s", filename))
+          else
+            failedCount = failedCount + 1
+            X2:ChatLog(string.format("[MenuPluginLoader] Failed to load %s: Plugin is missing required values", filename))
+          end
+        else
+          failedCount = failedCount + 1
+          X2:ChatLog(string.format("[MenuPluginLoader] Failed to load %s: Plugin is not a table", filename))
+        end
+      else
+        failedCount = failedCount + 1
+        X2:ChatLog(string.format("[MenuPluginLoader] Failed to load %s: %s", filename, response))
+      end
+    end
+  end
+  files:close()
+  X2:ChatLog(string.format("[MenuPluginLoader] Successfully loaded %d plugins, failed to load %d", pluginCount, failedCount))
+  return plugins
+end
+local CreateSystemConfigFrame = function()
+  local frame = CreateWindow("systemConfigFrame", "UIParent")
+  frame:AddAnchor("CENTER", "UIParent", 0, 0)
+  frame:SetTitle(GetUIText(KEY_BINDING_TEXT, "config_menu"))
+  frame:SetSounds("config")
+  local upperSection = frame:CreateChildWidget("emptywidget", "upperSection", 0, false)
+  upperSection:AddAnchor("TOP", frame, 0, MARGIN.WINDOW_TITLE)
+  local highest = 0
+  local path = "ui/common/esc_menu.dds"
+  local groupWidth = 180
+  local offset = 10
+  local commercialMailCount = 0
+  local plugins = LoadMenuPlugins()
+  local featureSet = X2Player:GetFeatureSet()
+  local infos = {
+    [UIC_CHARACTER_INFO] = {
+      name = GetUIText(COMMON_TEXT, "character_main_widget_title"),
+      badge = {
+        executeWhenCreate = true,
+        updater = function()
+          local count = X2Equipment:DameagedItemCount(false)
+          if count == 0 then
+            return false
+          end
+          return true, count
+        end,
+        events = {
+          "UNIT_EQUIPMENT_CHANGED"
+        }
+      }
+    },
+    [UIC_BAG] = {
+      name = GetUIText(INFOBAR_MENU_TEXT, "bag"),
+      badge = {
+        executeWhenCreate = true,
+        updater = function()
+          local count = X2Bag:CountEmptyBagSlots()
+          if X2Bag:CountEmptyBagSlots() > 10 or X2Option:GetOptionItemValue(OIT_SHOWEMPTYBAGSLOTCOUNTER) == 0 then
+            return false
+          end
+          return true, count
+        end,
+        events = {
+          "BAG_UPDATE",
+          "BAG_EXPANDED",
+          "CHANGE_EMPTY_BAG_SLOT_COUNTER_DISPLAY"
+        }
+      }
+    },
+    [UIC_SKILL] = {
+      name = GetUIText(SKILL_TEXT, "titleText"),
+      badge = {
+        executeWhenCreate = true,
+        updater = function()
+          local total, used = X2Ability:GetSkillPoint()
+          local count = total - used
+          if count <= 0 then
+            return false
+          end
+          return true, count
+        end,
+        events = {
+          "SKILL_LEARNED",
+          "SKILL_CHANGED",
+          "ABILITY_CHANGED",
+          "LEVEL_CHANGED",
+          "SKILLS_RESET",
+          "ABILITY_SET_CHANGED",
+          "UPDATE_SKILL_POINT"
+        }
+      },
+      alarm = {
+        executeWhenCreate = true,
+        visibleChecker = function()
+          return X2Ability:NeedHeirLevelUpItem()
+        end,
+        events = {
+          "HEIR_LEVEL_UP",
+          "EXP_CHANGED",
+          "HEIR_SKILL_UPDATE"
+        }
+      }
+    },
+    [UIC_QUEST_LIST] = {
+      name = GetUIText(COMMON_TEXT, "quest_contexts"),
+      alarm = {
+        executeWhenCreate = false,
+        visibleChecker = function(eventKey, ...)
+          if eventKey == "QUEST_CONTEXT_UPDATED" then
+            local args = {
+              ...
+            }
+            if #args == 0 then
+              return false
+            end
+            local qType = args[1]
+            if qType == nil then
+              return false
+            end
+            if not X2Quest:IsMainQuest(qType) then
+              return false
+            end
+            if not AddableQuest(qType) then
+              return false
+            end
+            local qstatus = X2Quest:GetActiveQuestListStatusByType(qType)
+            local status = args[2]
+            if (status == "started" or status == "updated") and (qstatus == 1 or qstatus == 3) then
+              return true
+            end
+            return false
+          else
+            return X2Quest:IsAllCompleteMainQuest() == false
+          end
+        end,
+        events = {
+          "QUEST_CONTEXT_UPDATED",
+          "ENTERED_WORLD",
+          "UI_RELOADED"
+        }
+      }
+    },
+    [UIC_CHRONICLE_BOOK_WND] = {
+      name = GetUIText(COMMON_TEXT, "chronicle_book_tab_story")
+    },
+    [UIC_ACHIEVEMENT] = {
+      name = GetUIText(COMMON_TEXT, "assignment_system")
+    },
+    [UIC_COMMUNITY] = {
+      name = GetUIText(COMMON_TEXT, "community"),
+      alarm = {
+        executeWhenCreate = true,
+        visibleChecker = function()
+          return X2Friend:IsExistWaitFriendToReceive()
+        end,
+        events = {
+          "ENTERED_WORLD",
+          "WAIT_FRIEND_ADD_ALARM"
+        }
+      }
+    },
+    [UIC_BLESS_UTHSTIN] = {
+      name = GetUIText(WINDOW_TITLE_TEXT, "bless_uthstin")
+    },
+    [UIC_RANK] = {
+      name = GetUIText(RANKING_TEXT, "ranking")
+    },
+    [UIC_RAID_TEAM_MANAGER] = {
+      name = GetUIText(RAID_TEXT, "raid_title")
+    },
+    [UIC_HERO] = {
+      name = GetUIText(COMMON_TEXT, "hero")
+    },
+    [UIC_AUCTION] = {
+      name = GetUIText(WINDOW_TITLE_TEXT, "auction")
+    },
+    [UIC_COMMERCIAL_MAIL] = {
+      name = GetUIText(WINDOW_TITLE_TEXT, "commercial_mail"),
+      badge = {
+        executeWhenCreate = true,
+        updater = function()
+          local newCount = X2GoodsMail:GetCountUnreadMail()
+          if newCount > commercialMailCount then
+            F_SOUND.PlayUISound("event_commercial_mail_alarm")
+          end
+          commercialMailCount = newCount
+          if newCount <= 0 then
+            return false
+          end
+          return true, newCount
+        end,
+        events = {
+          "GOODS_MAIL_INBOX_UPDATE"
+        }
+      }
+    },
+    [UIC_ITEM_GUIDE] = {
+      name = GetUIText(COMMON_TEXT, "equip_item_guide")
+    },
+    [UIC_BUTLER_INFO] = {
+      name = GetUIText(COMMON_TEXT, "butler")
+    },
+    [UIC_MAIL] = {
+      name = GetUIText(WINDOW_TITLE_TEXT, "mail")
+    },
+    [UIC_WORLDMAP] = {
+      name = GetUIText(MAP_TEXT, "title")
+    },
+    [UIC_CRAFT_BOOK] = {
+      name = GetUIText(WINDOW_TITLE_TEXT, "craft_book")
+    },
+    [UIC_MY_FARM_INFO] = {
+      name = GetUIText(INFOBAR_MENU_TIP_TEXT, "farm")
+    },
+    [UIC_SPECIALTY_INFO] = {
+      name = GetUIText(COMMON_TEXT, "specialty_info_title")
+    },
+    [UIC_OPTIMIZATION] = {
+      name = GetUIText(COMMON_TEXT, "optimization"),
+      state = {
+        isOn = function()
+          return X2Option:GetOptionItemValue(OIT_OPTION_OPTIMIZATION_ENABLE) == 1
+        end,
+        events = {
+          "OPTIMIZATION_RESULT_MESSAGE"
+        }
+      }
+    },
+    [UIC_WEB_MESSENGER] = {
+      name = GetUIText(INFOBAR_MENU_TIP_TEXT, "message"),
+      badge = {
+        executeWhenCreate = false,
+        updater = function(count)
+          UIParent:Log(string.format("SET_WEB_MESSENGE_COUNT, count: %s", tostring(count)))
+          if count == nil or count <= 0 then
+            return false
+          end
+          return true, count
+        end,
+        events = {
+          "SET_WEB_MESSENGE_COUNT"
+        }
+      }
+    },
+    [UIC_WEB_PLAY_DIARY] = {
+      name = GetUIText(INFOBAR_MENU_TIP_TEXT, "play_journal")
+    },
+    [UIC_WEB_WIKI] = {
+      name = GetUIText(INFOBAR_MENU_TIP_TEXT, "archewiki")
+    },
+    [UIC_WEB_HELP] = {
+      name = GetUIText(CHARACTER_CREATE_TEXT, "one_to_one_Inquire"),
+      badge = {
+        executeWhenCreate = false,
+        updater = function(msgType, _, countStr)
+          UIParent:Log(string.format("SET_UI_MESSAGE, msgType: %s, countStr: %s", tostring(msgType), tostring(countStr)))
+          if msgType ~= 1 then
+            return false
+          end
+          if countStr == nil then
+            return false
+          end
+          local count = tonumber(countStr)
+          if count <= 0 then
+            return false
+          end
+          return true, count
+        end,
+        events = {
+          "SET_UI_MESSAGE"
+        }
+      }
+    },
+    [UIC_ENTER_SECOND_PASSWORD] = {
+      name = GetUIText(SECOND_PASSWORD_TEXT, "second_password"),
+      state = {
+        isOn = function()
+          return X2Security:IsSecondPasswordCreated()
+        end,
+        events = {
+          "SECOND_PASSWORD_CREATION_COMPLETED",
+          "SECOND_PASSWORD_CLEAR_COMPLETED",
+          "SECOND_PASSWORD_CHECK_OVER_FAILED"
+        }
+      },
+      tooltip = function()
+        local remainDate = X2Security:GetSecondPasswordClearReserveTime()
+        if remainDate == nil then
+          return ""
+        end
+        local msg = locale.time.GetRemainDateToDateFormat(remainDate)
+        return GetUIText(SECOND_PASSWORD_TEXT, "reserved_second_password_clear", msg)
+      end
+    },
+    [UIC_TGOS] = {
+      name = GetUIText(COMMON_TEXT, "tgos")
+    },
+    [UIC_UI_AVI] = {
+      name = GetUIText(TUTORIAL_TEXT, "ui_avi")
+    },
+    [UIC_MARKET_PRICE] = {
+      name = GetUIText(COMMON_TEXT, "market_price")
+    }
+  }
+  local maxLineCount = 0
+  local buttonHeight = 0
+  local decoOffset = 0
+  local badgeOffset = 5
+  local allButtons = {}
+  local function CreateGroup(index, info)
+    local group = upperSection:CreateChildWidget("emptywidget", "group", index, false)
+    local bg = group:CreateDrawable(TEXTURE_PATH.DEFAULT, "type02_new", "background")
+    bg:SetTextureColor("alpha20")
+    bg:AddAnchor("TOPLEFT", group, 0, 0)
+    bg:AddAnchor("BOTTOMRIGHT", group, 0, 5)
+    local icon = group:CreateDrawable(path, info.iconKey, "background")
+    icon:AddAnchor("TOP", group, 0, 9)
+    local deco = group:CreateDrawable(path, "menu_bg_deco", "background")
+    deco:AddAnchor("TOP", group, 0, 0)
+    if decoOffset == 0 then
+      decoOffset = deco:GetHeight()
+    end
+    local title = group:CreateChildWidget("label", "title", 0, false)
+    title:SetText(info.name)
+    title.style:SetFontSize(FONT_SIZE.LARGE)
+    title:SetExtent(groupWidth - offset, FONT_SIZE.LARGE)
+    title:AddAnchor("TOP", icon, "BOTTOM", 0, 5)
+    title.style:SetColorByKey("title")
+    F_TEXT.ApplyAutoEllipsisTooltipText(title, offset)
+    local buttons = {}
+    if info.menus ~= nil then
+      for i, v in ipairs(info.menus) do
+        local creatable = true
+        if featureSet ~= nil and v.featureSet ~= nil then
+          for i, v2 in ipairs(v.featureSet) do
+            if not featureSet[v2] then
+              creatable = false
+              break
+            end
+          end
+        end
+        if creatable then
+          do
+            local button = group:CreateChildWidget("button", "button", #buttons + 1, false)
+            button:SetStyle("menu")
+            if buttonHeight == 0 then
+              buttonHeight = button:GetHeight()
+            end
+            local uiContentType = v.uiContentType
+            local additionalInfo = infos[uiContentType]
+            button:SetText(additionalInfo.name)
+            local target = #buttons == 0 and deco or buttons[#buttons]
+            button:AddAnchor("TOP", target, "BOTTOM", 0, 0)
+            local icon = button:CreateDrawable(path, v.iconKey, "background")
+            icon:AddAnchor("LEFT", button, 0, 1)
+            local function OnEnableChanged(self, enabled)
+              local key = enabled and "default" or "gray"
+              icon:SetTextureColor(key)
+            end
+            button:SetHandler("OnEnableChanged", OnEnableChanged)
+            button:Enable(UIParent:GetPermission(uiContentType))
+            button.uicType = uiContentType
+            local events = {}
+            local manualUpdater = nil
+            local badgeExtent = 23
+            local badgeOffsetX = -5
+            local badgeOffsetY = 1
+            local badgeInset = 5
+            local leftInset = icon:GetWidth() + 3
+            function UpdateInset()
+              local rightInset = 0
+              local targets = {
+                button.badge,
+                button.stateBadge
+              }
+              for i = 1, #targets do
+                if targets[i] ~= nil then
+                  rightInset = rightInset + targets[i]:GetWidth() + badgeInset
+                end
+              end
+              button:SetInset(leftInset, 0, rightInset, 0)
+            end
+            if v.badgeColorKey ~= "" then
+              do
+                local badge = button:CreateChildWidget("label", "badge", 0, true)
+                badge:Show(false)
+                badge:AddAnchor("RIGHT", button, badgeOffsetX, badgeOffsetY)
+                badge:SetExtent(badgeExtent, badgeExtent)
+                badge.style:SetFontSize(FONT_SIZE.SMALL)
+                local bg = badge:CreateDrawable(TEXTURE_PATH.DEFAULT, "text_badge_bg", "background")
+                bg:AddAnchor("TOPLEFT", badge, 0, 0)
+                bg:AddAnchor("BOTTOMRIGHT", badge, 0, 0)
+                bg:SetTextureColor(v.badgeColorKey)
+                local function UpdateBadge(visible, count)
+                  if visible then
+                    local str = tostring(count)
+                    badge:SetText(str)
+                  end
+                  badge:Show(visible)
+                  UpdateInset()
+                end
+                local badgeInfo = additionalInfo.badge
+                if badgeInfo ~= nil then
+                  local function CallUpdater(eventKey, ...)
+                    local visible, count = badgeInfo.updater(...)
+                    UpdateBadge(visible, count)
+                  end
+                  if badgeInfo.executeWhenCreate then
+                    CallUpdater()
+                  end
+                  for i, v in ipairs(badgeInfo.events) do
+                    events[v] = CallUpdater
+                  end
+                end
+              end
+            end
+            local alarmInfo = additionalInfo.alarm
+            if alarmInfo ~= nil then
+              do
+                local alarmIcon = button:CreateDrawable(TEXTURE_PATH.HUD_TEXT, "up_alarm", "overlay")
+                alarmIcon:AddAnchor("TOPLEFT", icon, -2, 0)
+                alarmIcon:SetVisible(false)
+                button.alarmIcon = alarmIcon
+                local function VisibleUpdater(eventKey, ...)
+                  alarmIcon:SetVisible(alarmInfo.visibleChecker(eventKey, ...))
+                  if frame.CheckAlarms ~= nil then
+                    frame:CheckAlarms()
+                  end
+                end
+                if alarmInfo.executeWhenCreate then
+                  VisibleUpdater()
+                end
+                for i, v in ipairs(alarmInfo.events) do
+                  events[v] = VisibleUpdater
+                end
+              end
+            end
+            local stateInfo = additionalInfo.state
+            if stateInfo ~= nil then
+              do
+                local stateBadge = W_ICON.CreateTextBadge("state", button, {
+                  info = {
+                    on = {
+                      text = GetUIText(COMMON_TEXT, "on"),
+                      colorKey = "situation_01"
+                    },
+                    off = {
+                      text = GetUIText(COMMON_TEXT, "off"),
+                      colorKey = "situation_03"
+                    }
+                  },
+                  minWidth = badgeExtent
+                })
+                stateBadge:AddAnchor("RIGHT", button, badgeOffsetX, badgeOffsetY)
+                button.stateBadge = stateBadge
+                local function CallUpdater()
+                  local state = stateInfo.isOn()
+                  local key = state == true and "on" or "off"
+                  stateBadge:Set(key)
+                  UpdateInset()
+                end
+                CallUpdater()
+                if stateInfo.events then
+                  for i, v in ipairs(stateInfo.events) do
+                    events[v] = CallUpdater
+                  end
+                else
+                  manualUpdater = CallUpdater
+                end
+              end
+            end
+            UpdateInset()
+            function events.UI_PERMISSION_UPDATE()
+              button:Enable(UIParent:GetPermission(uiContentType))
+            end
+            button:SetHandler("OnEvent", function(this, event, ...)
+              events[event](event, ...)
+            end)
+            RegistUIEvent(button, events)
+            local hotkey = v.hotkey
+            local function OnEnter(self)
+              local offset = icon:GetWidth()
+              local offsetTarget = {
+                self.badge,
+                self.stateBadge
+              }
+              for i = 1, #offsetTarget do
+                local target = offsetTarget[i]
+                if target ~= nil and target:IsVisible() then
+                  offset = offset + target:GetWidth() + badgeInset
+                end
+              end
+              local textWidth = button.style:GetTextWidth(self:GetText())
+              local curHotKey = ""
+              if hotkey ~= nil then
+                curHotKey = X2Hotkey:GetBinding(hotkey, 1)
+              end
+              local addtionalTooltipStr = ""
+              if additionalInfo.tooltip ~= nil then
+                addtionalTooltipStr = additionalInfo.tooltip()
+              end
+              if addtionalTooltipStr == "" and textWidth < self:GetWidth() - offset and curHotKey == "" then
+                return
+              end
+              local tooltip = self:GetText()
+              if curHotKey ~= "" then
+                tooltip = string.format("%s (%s)", tooltip, string.upper(curHotKey))
+              end
+              if addtionalTooltipStr ~= "" then
+                tooltip = F_TEXT.SetEnterString(tooltip, addtionalTooltip)
+              end
+              SetTooltip(tooltip, self)
+            end
+            button:SetHandler("OnEnter", OnEnter)
+            local function LeftClickFunc(self)
+              ADDON:ToggleContent(uiContentType)
+              frame:Show(false)
+              if button.alarmIcon ~= nil then
+                button.alarmIcon:SetVisible(false)
+              end
+              frame:CheckAlarms()
+            end
+            if plugins[v.uiContentType] and plugins[v.uiContentType].CustomOnClick then
+              local function CustomLeftClickFunc(self)
+                plugins[v.uiContentType].CustomOnClick()
+                if manualUpdater then
+                  manualUpdater()
+                end
+              end
+              ButtonOnClickHandler(button, CustomLeftClickFunc)
+            else
+              ButtonOnClickHandler(button, LeftClickFunc)
+            end
+            table.insert(buttons, button)
+            table.insert(allButtons, button)
+          end
+        end
+      end
+    end
+    if maxLineCount < #buttons then
+      maxLineCount = #buttons
+    end
+    local _, h = F_LAYOUT.GetExtentWidgets(buttons[1], buttons[#buttons])
+    group:SetExtent(groupWidth, deco:GetHeight() + h)
+    return group
+  end
+  local groups = {}
+  local maxHeight = 0
+  local categories = X2:GetEscMenuCategories()
+  for k, v in pairs(plugins) do
+    infos[v.menu.uiContentType] = v.info
+    table.insert(categories[v.category]["menus"], v.menu)
+  end
+  for i, v in ipairs(categories) do
+    local group = CreateGroup(i, v)
+    if i == 1 then
+      group:AddAnchor("TOPLEFT", upperSection, 0, 0)
+    else
+      group:AddAnchor("TOPLEFT", groups[i - 1], "TOPRIGHT", 0, 0)
+    end
+    local height = group:GetHeight()
+    if maxHeight < height then
+      maxHeight = height
+    end
+    table.insert(groups, group)
+  end
+  local startOffset = decoOffset + buttonHeight
+  local yOffset = startOffset
+  local lineOffset = 10
+  for i, v in ipairs(groups) do
+    v:SetHeight(maxHeight)
+    if maxLineCount ~= 0 then
+      for i = 1, maxLineCount - 1 do
+        local line = v:CreateDrawable(TEXTURE_PATH.DEFAULT, "line_01", "background")
+        line:SetTextureColor("default")
+        line:AddAnchor("TOPLEFT", v, lineOffset, yOffset)
+        line:AddAnchor("TOPRIGHT", v, -lineOffset, yOffset)
+        yOffset = yOffset + buttonHeight
+      end
+      yOffset = startOffset
+    end
+  end
+  function frame:CheckAlarms()
+    local visible = false
+    for i, v in ipairs(allButtons) do
+      if v.alarmIcon ~= nil and v.alarmIcon:IsVisible() then
+        visible = true
+        break
+      end
+    end
+    UpdateEscMenuToggleButton(visible)
+  end
+  function frame:ShowProc()
+    X2Hotkey:GetWebMessageCount()
+    frame:CheckAlarms()
+  end
+  function frame:TurnOffAlarm(uicType)
+    for i, v in ipairs(allButtons) do
+      if v.uicType == uicType then
+        v.alarmIcon:SetVisible(false)
+        break
+      end
+    end
+    frame:CheckAlarms()
+  end
+  local upperWidth, _ = F_LAYOUT.GetExtentWidgets(groups[1], groups[#groups])
+  upperSection:SetExtent(upperWidth, maxHeight)
+  local bottomSection = frame:CreateChildWidget("emptywidget", "bottomSection", 0, false)
+  bottomSection:AddAnchor("TOP", upperSection, "BOTTOM", 0, 10)
+  local buttonOffset = 95
+  local optionButton = bottomSection:CreateChildWidget("button", "optionButton", 0, true)
+  optionButton:SetText(locale.menu.option)
+  optionButton:SetStyle("config")
+  optionButton:AddAnchor("LEFT", bottomSection, 0, 0)
+  local function OptionButtonLeftClickFunc()
+    frame:Show(false)
+    ToggleOptionFrame(true)
+  end
+  ButtonOnClickHandler(optionButton, OptionButtonLeftClickFunc)
+  local selectCharacterButton = bottomSection:CreateChildWidget("button", "selectCharacterButton", 0, true)
+  selectCharacterButton:SetText(locale.menu.selectCharacter)
+  selectCharacterButton:SetStyle("character")
+  selectCharacterButton:AddAnchor("LEFT", optionButton, "RIGHT", buttonOffset, 0)
+  local SelectCharacterButtonLeftClickFunc = function()
+    X2World:LeaveWorld(EXIT_TO_CHARACTER_LIST)
+  end
+  ButtonOnClickHandler(selectCharacterButton, SelectCharacterButtonLeftClickFunc)
+  local exitGameButton = bottomSection:CreateChildWidget("button", "exitGameButton", 0, true)
+  exitGameButton:SetText(X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "config_game_exit"))
+  exitGameButton:AddAnchor("LEFT", selectCharacterButton, "RIGHT", buttonOffset, 0)
+  exitGameButton:SetStyle("exit")
+  local ExitGameButtonLeftClickFunc = function()
+    X2World:LeaveWorld(EXIT_CLIENT)
+  end
+  ButtonOnClickHandler(exitGameButton, ExitGameButtonLeftClickFunc)
+  function frame:Init()
+    selectCharacterButton:Enable(UIParent:GetPermission(UIC_SELECT_CHARACTER))
+    exitGameButton:Enable(UIParent:GetPermission(UIC_EXIT_GAME))
+  end
+  local w, _ = F_LAYOUT.GetExtentWidgets(optionButton, exitGameButton)
+  bottomSection:SetExtent(w, exitGameButton:GetHeight())
+  local _, totalH = F_LAYOUT.GetExtentWidgets(frame.titleBar, bottomSection)
+  frame:SetExtent(upperWidth + MARGIN.WINDOW_SIDE * 2, totalH + MARGIN.WINDOW_SIDE)
+  return frame
+end
+local systemConfigFrame = CreateSystemConfigFrame()
+systemConfigFrame:SetCloseOnEscape(true)
+ADDON:RegisterContentWidget(UIC_SYSTEM_CONFIG_FRAME, systemConfigFrame)
+local CreateGameExitFrame = function()
+  local frame = CreateWindow("gameExitFrame", "UIParent")
+  frame:SetWidth(F_PREFIX_SIZE:GetWindowWidth(WINDOW_WIDTH_350))
+  frame:AddAnchor("CENTER", "UIParent", 0, 0)
+  frame:SetUILayer("dialog")
+  frame:SetWindowModal(true)
+  frame:SetCloseOnEscape(false)
+  frame.titleBar:HideCloseButton()
+  local msg = W_MODULE:Create("msg", frame, W_MODULE.TYPES.TEXTBOX, {
+    [W_MODULE.ATTRIBUTE.TEXT] = "default"
+  })
+  frame:RegisterStack(msg)
+  frame.msg = msg
+  local remainTime = W_MODULE:Create("remainTime", frame, W_MODULE.TYPES.REMAIN_TIME, {
+    [W_MODULE.ATTRIBUTE.TIME] = 5000
+  })
+  frame:RegisterStack(remainTime)
+  frame.remainTime = remainTime
+  remainTime:Stop()
+  local buttonSet = W_MODULE:Create("buttonSet", frame, W_MODULE.TYPES.BUTTON_SET)
+  buttonSet:AddButton("btn", {
+    [W_MODULE.ATTRIBUTE.TEXT] = "default",
+    [W_MODULE.ATTRIBUTE.ANCHOR_ALIGN] = W_MODULE.ANCHOR_ALIGN_TYPE.CENTER,
+    enable = false,
+    clickFunc = function(self)
+    end
+  })
+  frame.buttonSet = buttonSet
+  frame:RegisterStack(buttonSet)
+  function frame:OnTimeOut()
+    frame.buttonSet:UpdateButton("btn", {enable = false})
+    frame.remainTime:Stop()
+    frame.msg:SetDataPartially(W_MODULE.ATTRIBUTE.TEXT, X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "processing"))
+    frame:ApplyAutoHeightByStack(true)
+  end
+  local STATE_NORMAL, STATE_COMBAT, STATE_SUMMON = 1, 2, 3
+  local function GetPlayerStateType()
+    if X2Player:HasSlaveUnit() then
+      return STATE_SUMMON
+    elseif X2Player:PlayerInCombat() then
+      return STATE_COMBAT
+    else
+      return STATE_NORMAL
+    end
+  end
+  local STATE_DATA = {
+    [STATE_COMBAT] = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "add_time_of_combatState"),
+    [STATE_SUMMON] = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "add_time_of_summon")
+  }
+  local function GetDescWithState(state, str)
+    if state == STATE_NORMAL then
+      return str
+    end
+    return F_TEXT.SetEnterString(str, STATE_DATA[state])
+  end
+  function frame:StartData(data)
+    if data == nil then
+      return
+    end
+    if data.title then
+      frame:SetTitle(data.title)
+    end
+    if data.desc then
+      local msg = GetDescWithState(GetPlayerStateType(), data.desc)
+      frame.msg:SetDataPartially(W_MODULE.ATTRIBUTE.TEXT, msg)
+    end
+    if data.remainTime then
+      frame.remainTime:SetData({
+        [W_MODULE.ATTRIBUTE.TIME] = data.remainTime
+      })
+    end
+    if data.button then
+      frame.buttonSet:UpdateButton("btn", data.button)
+    end
+    frame:ApplyAutoHeightByStack(true)
+  end
+  local function cancelFunc(btn)
+    frame.buttonSet:UpdateButton("btn", {enable = false})
+    frame.remainTime:Stop()
+    X2World:CancelLeaveWorld()
+  end
+  local function exitFunc(btn)
+    frame.buttonSet:UpdateButton("btn", {enable = false})
+    frame.remainTime:Stop()
+    X2World:LeaveWorld(EXIT_CLIENT)
+  end
+  local cancelBtn = {
+    [W_MODULE.ATTRIBUTE.TEXT] = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "game_cancel"),
+    clickFunc = cancelFunc,
+    enable = true
+  }
+  local exitBtn = {
+    [W_MODULE.ATTRIBUTE.TEXT] = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "game_ok"),
+    clickFunc = exitFunc,
+    enable = true
+  }
+  local layoutData = {
+    [EXIT_CLIENT] = {
+      title = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "config_game_exit"),
+      desc = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "game_exit_msg"),
+      button = cancelBtn
+    },
+    [EXIT_CLIENT_NONE_ACTION] = {
+      title = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "config_game_exit"),
+      desc = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "none_action_exit"),
+      button = exitBtn
+    },
+    [EXIT_TO_CHARACTER_LIST] = {
+      title = locale.menu.selectCharacter,
+      desc = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "exit_select_character"),
+      button = cancelBtn
+    },
+    [EXIT_TO_WORLD_LIST] = {
+      title = locale.menu.selectWorld,
+      desc = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "exit_select_world"),
+      button = cancelBtn
+    }
+  }
+  function frame:LeaveWorldStarted(waitTime, exitTarget, idleKick)
+    local data = layoutData[exitTarget]
+    if data == nil then
+      return
+    end
+    if exitTarget == EXIT_TO_CHARACTER_LIST and idleKick then
+      data.title = locale.menu.selectWorld
+      data.desc = X2Locale:LocalizeUiText(KEY_BINDING_TEXT, "exit_select_world")
+    end
+    data.remainTime = waitTime
+    frame:StartData(data)
+    frame:Show(true)
+  end
+  function frame:Stop()
+    frame.remainTime:Stop()
+    frame:Show(false)
+  end
+  return frame
+end
+local gameExitFrame = CreateGameExitFrame()
+ADDON:RegisterContentWidget(UIC_GAME_EXIT_FRAME, gameExitFrame)
+function ToggleSystemConfigFrame(show)
+  if show == nil then
+    show = not systemConfigFrame:IsVisible()
+  end
+  if show then
+    systemConfigFrame:Init()
+  end
+  systemConfigFrame:Show(show)
+end
+local function LeaveWorldStarted(waitTime, exitTarget, idleKick)
+  systemConfigFrame:Show(false)
+  gameExitFrame:LeaveWorldStarted(waitTime, exitTarget, idleKick)
+end
+local systemConfigFrameEvents = {
+  OPEN_CONFIG = function()
+    ToggleSystemConfigFrame(true)
+  end,
+  LEAVING_WORLD_STARTED = LeaveWorldStarted,
+  LEAVING_WORLD_CANCELED = function()
+    gameExitFrame:Stop()
+  end,
+  ENTERED_LOADING = function()
+    ADDON:ShowContent(UIC_CHARACTER_INFO, false)
+    ADDON:ShowContent(UIC_SKILL, false)
+    ADDON:ShowContent(UIC_QUEST_LIST, false)
+    ADDON:ShowContent(UIC_BAG, false)
+    ToggleRecipeBook(false)
+    ADDON:ShowContent(UIC_WORLDMAP, false)
+    ADDON:ShowContent(UIC_MY_FARM_INFO, false)
+    ADDON:ShowContent(UIC_COMMUNITY, false)
+    ToggleRaidManager(false)
+    ToggleSystemConfigFrame(false)
+    ADDON:ShowContent(UIC_MARKET_PRICE, false)
+    ADDON:ShowContent(UIC_BUTLER_INFO, false)
+    ADDON:ShowContent(UIC_CHRONICLE_BOOK_WND, false)
+  end,
+  LEFT_LOADING = function()
+    systemConfigFrame:CheckAlarms()
+  end
+}
+systemConfigFrame:SetHandler("OnEvent", function(this, event, ...)
+  systemConfigFrameEvents[event](...)
+end)
+systemConfigFrame:RegisterEvent("OPEN_CONFIG")
+systemConfigFrame:RegisterEvent("LEAVING_WORLD_STARTED")
+systemConfigFrame:RegisterEvent("LEAVING_WORLD_CANCELED")
+systemConfigFrame:RegisterEvent("ENTERED_LOADING")
+systemConfigFrame:RegisterEvent("LEFT_LOADING")
+function RequestTurnOffAlarmInEscMenu(uicType)
+  if uicType == nil then
+    return
+  end
+  systemConfigFrame:TurnOffAlarm(uicType)
+end
