@@ -1,0 +1,98 @@
+<Material MtlFlags="524544" SpecularLevel="1">
+ <SubMaterials>
+  <Material Name="whiteshirt002" MtlFlags="524416" SpecularLevel="2" Shader="Illum" GenMask="8000000001000094" SurfaceType="" sRGB="2" Diffuse="0.3137255,0.3137255,0.3137255" Specular="0.38431376,0.29803923,0.29803923" Emissive="0,0,0" Shininess="1.5" Opacity="1" AlphaTest="0.5">
+   <RecursiveData>
+    <RecDiffuse Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+    <RecEmission Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+   </RecursiveData>
+   <Textures>
+    <Texture Map="Diffuse" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt002/nu_f_sk_whiteshirt002_df.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Specular" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt001/nu_f_sk_whiteshirt001_sp.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Normalmap" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt001/nu_f_sk_whiteshirt001_ddn.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Environment" File="game/textures/cubemaps/beach_blur2.dds">
+     <TexMod />
+    </Texture>
+   </Textures>
+   <PublicParams SpecularModifierInHDR="1.7" FresnelScale="1" AmbientMultiplier="1" FresnelBias="0" DiffuseModifierInHDR="0.69999999" ReflectAmount="1"/>
+  </Material>
+  <Material Name="mask" MtlFlags="1074266240" SpecularLevel="1" Shader="Cloth" GenMask="200020100" SurfaceType="" sRGB="2" Diffuse="0.21568629,0.21568629,0.21568629" Specular="0.19215688,0.14901963,0.14901963" Emissive="0,0,0" Shininess="1.5" Opacity="0.99000001" AlphaTest="0.0099999998">
+   <RecursiveData>
+    <RecDiffuse Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+    <RecEmission Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+   </RecursiveData>
+   <Textures>
+    <Texture Map="Diffuse" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt002/nu_f_sk_whiteshirt002_df.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Specular" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt001/nu_f_sk_whiteshirt001_sp.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Normalmap" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt001/nu_f_sk_whiteshirt001_ddn.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Environment" File="game/textures/cubemaps/beach_blur2.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Opacity" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt002/nu_f_sk_whiteshirt002_mask.dds" TexType="0">
+     <TexMod />
+    </Texture>
+   </Textures>
+   <PublicParams AnimAmplitudeWav0="0" AmbientSpecMult="1" AnisotropicShape="0.44999999" TransparentChannelMask="0,1,0,0" FuzzynessSpread="1" SpecularMultiplier="0.31400001" FuzzynessStrength="1" FuzzynessSmoothness="6.3299999" FuzzynessSaturation="1" DiffuseExponent="1" AnimFrequency="0" AnimAmplitudeWav2="0" AnimPhase="1"/>
+  </Material>
+  <Material Name="skin" MtlFlags="524416" SpecularLevel="2" Shader="Humanskin" GenMask="8000000000002002" SurfaceType="" sRGB="2" Diffuse="0.1254902,0.10980393,0.082352944" Specular="0.52549022,0.6901961,0.72156864" Emissive="0,0,0" Shininess="21" Opacity="1">
+   <RecursiveData>
+    <RecDiffuse Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+    <RecEmission Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+   </RecursiveData>
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/nuian/female/nude/nu_f_nude_df.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Specular" File="objects/characters/nuian/female/nude/nu_f_nude_sp.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Normalmap" File="objects/characters/nuian/female/nude/nu_f_nude_ddn.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Environment" File="game/textures/cubemaps/beach_blur2.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="SubSurface" File="objects/characters/nuian/female/nude/nu_f_nude_sss.dds">
+     <TexMod />
+    </Texture>
+   </Textures>
+   <PublicParams MSkinColor="0.45098042,0.59215689,0.59215689" DiffusionAmount="1.4" SubsurfaceStrenght="1" SSSMapSat="0.34999999" RimPow="0.5" BSkinColor="0.67450982,0.88235301,0.81568635"/>
+  </Material>
+  <Material Name="mask_leg" MtlFlags="1074266240" SpecularLevel="3" Shader="Cloth" GenMask="200020100" SurfaceType="" sRGB="2" Diffuse="0.18823531,0.18823531,0.18823531" Specular="0.57647061,0.44705889,0.44705889" Emissive="0,0,0" Shininess="1.5" Opacity="0.99000001" AlphaTest="0.0099999998">
+   <RecursiveData>
+    <RecDiffuse Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+    <RecEmission Begin="0,0,0,1" End="0,0,0,1" Period="0"/>
+   </RecursiveData>
+   <Textures>
+    <Texture Map="Diffuse" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt002/nu_f_sk_whiteshirt002_df.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Specular" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt001/nu_f_sk_whiteshirt001_sp.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Normalmap" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt001/nu_f_sk_whiteshirt001_ddn.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Environment" File="game/textures/cubemaps/beach_blur2.dds">
+     <TexMod />
+    </Texture>
+    <Texture Map="Opacity" File="game/objects/characters/nuian/female/costume/nu_f_sk_whiteshirt002/nu_f_sk_whiteshirt002_mask.dds" TexType="0">
+     <TexMod />
+    </Texture>
+   </Textures>
+   <PublicParams AnimAmplitudeWav0="0" AmbientSpecMult="1" AnisotropicShape="0.25" TransparentChannelMask="1,0,0,0" FuzzynessSpread="1.74" SpecularMultiplier="0.48800001" FuzzynessStrength="2.3299999" FuzzynessSmoothness="4.6500001" FuzzynessSaturation="1.1339999" DiffuseExponent="1" AnimFrequency="0" AnimAmplitudeWav2="0" AnimPhase="1"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams FresnelScale="1" AmbientMultiplier="1" FresnelBias="0" ReflectAmount="0.25"/>
+</Material>
