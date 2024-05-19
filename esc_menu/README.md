@@ -16,7 +16,7 @@ setting `autodetect` to `true` will run a `dir` command through `cmd` to detect 
 [google](plugins/google.lua) - find more information [here](../../../tree/main/google_sheets_exporter)  
 [hidden_buffs](plugins/hidden_buffs.lua) - allows you to toggle the display of hidden_buffs from the main menu after installing [the appropriate mod](../../../tree/main/hidden_buffs)  
 [mail](plugins/mail.lua) - allows you to open the mailbox from the main menu, only lets you read mail and take attachments one-by-one  
-[portal](plugins/portal.lua) - allows you to save a teleport to your teleport book (almost) anywhere in the world, open the plugin file for minor configuration options  
+[portal](plugins/portal.lua) - allows you to save a teleport to your teleport book (almost) anywhere in the world, open the plugin file for minor configuration options (thanks [Nidoran](https://discord.com/users/168501425909792768))  
 [settings](plugins/settings.lua) - adds an advanced settings menu to the main menu that allows you to modify any CryEngine3 variable (that's available in AA and not hard-locked) directly in-game, comes with a Bookmark tab that lets you bookmark commonly used variables and a Console tab that lets you directly query and input variables, similarly to the engine terminal. You can find a bunch of variables at the bottom of this page.  
 ![Bookmarks tab](https://drive.usercontent.google.com/download?id=1u2tAb4fLF_z75URYiWb56pnjMGjMrPo1)  
 ![Console tab](https://drive.usercontent.google.com/download?id=109nBKhR6yIMQkEyWrJ9PEwR8lLDaSUl6)  
@@ -71,7 +71,8 @@ Default X2:GetEscMenuCategories() table structure:
             ["badgeColorKey"] = ,
             ["uiContentType"] = 120,
             ["iconKey"] = community,
-          },[8] = {
+          },
+          [8] = {
             ["featureSet"] = {
               [1] = bless_uthstin,
             },
@@ -1658,3 +1659,40 @@ By using any variable with a `?` parameter you can query an explanation on what 
     s_XMADecoders
     s_gameVehicleMusicVolume
     s_vehicleMusicVolume
+    
+    # UI settings
+    ui_RepeatDelay
+    ui_avi
+    ui_avi_subs
+    ui_avis
+    ui_check_gfile
+    ui_check_icon_atlas
+    ui_check_texture
+    ui_content_info_feature_sets
+    ui_content_infos
+    ui_disable_caption
+    ui_double_click_interval
+    ui_draw_level
+    ui_dump_textures
+    ui_esc_menu_categories
+    ui_esc_menus
+    ui_event
+    ui_eventProfile
+    ui_fader
+    ui_gender_transfer
+    ui_hud_right_icon_menus
+    ui_localized_text_debug
+    ui_modelview_enable
+    ui_modelview_update_times
+    ui_options
+    ui_output_font_full_texture
+    ui_picking_color
+    ui_reload
+    ui_scale
+    ui_scale_change
+    ui_skill_accessor_update_interval
+    ui_stamp
+    ui_stats
+    ui_texts
+    ui_toggle_beautyshop
+    ui_toggle_ranking
